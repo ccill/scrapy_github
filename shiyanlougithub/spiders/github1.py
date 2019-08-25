@@ -1,0 +1,33 @@
+# -*- coding: utf-8 -*-
+import scrapy
+from shiyanlougithub.items import GithubItem
+
+
+class Github1Spider(scrapy.Spider):
+    name = 'github1'
+    allowed_domains = ['github.com']
+    start_urls = ['https://github.com/shiyanlou?tab=repositories',
+        'https://github.com/shiyanlou?after=Y3Vyc29yOnYyOpK5MjAxNy0wNi0wN1QwODowNjo1MyswODowMM4FkpKN&tab=repositories',
+'https://github.com/shiyanlou?after=Y3Vyc29yOnYyOpK5MjAxNS0wMS0zMVQyMDoyMDowMiswODowMM4BzHi1&tab=repositories',
+'https://github.com/shiyanlou?after=Y3Vyc29yOnYyOpK5MjAxNC0xMi0wNFQwMDoxNzo1MyswODowMM4BpCnu&tab=repositories',
+'https://github.com/shiyanlou?after=Y3Vyc29yOnYyOpK5MjAxNC0wOS0xNlQxMDowNjowMyswODowMM4Bb3Ud&tab=repositories']
+
+    def parse(self, response):
+        for repository in response.xpath('//div[@class="col-10 col-lg-9 d-inline-block"]'):
+            item=GithubItem()
+            item['name']=repository.xpath('./div/h3/a/text()').extract_first().strip()
+            item['update_time']=\
+                repository.xpath('.//div[@class="f6 text-gray mt-2"]/relative-time/@datetime').extract_first()
+            repository_url=repository.xpath('./div/h3/a/@href').extract_first()
+            full_url=response.urljoin(repository_url)
+            request=scrapy.Request(full_url,self.after_parse)
+            request.meta['item']=item
+            yield request
+
+
+    def after_parse(self,response):
+        item=response.meta['item']
+        item['commits']=response.xpath('//span[@class="num text-emphasized"]/text()').extract_first().strip()
+        item['branches']=response.xpath('//span[@class="num text-emphasized"]/text()').extract()[1].strip()
+        item['releases']=response.xpath('//span[@class="num text-emphasized"]/text()').extract()[2].strip()
+        yield item
